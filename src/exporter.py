@@ -113,7 +113,7 @@ class Exporter:
         custom_labels = ast.literal_eval(task.info()['kwargs'])
 
         for name, value in custom_labels.items():
-            if value.__class__.__name__ is 'str':
+            if isinstance(value, str):
                 labels[name] = value
 
         counter.labels(**labels).inc()
