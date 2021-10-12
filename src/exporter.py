@@ -1,5 +1,6 @@
 # pylint: disable=protected-access,,attribute-defined-outside-init
 import re
+import ast
 
 from celery import Celery
 from loguru import logger
@@ -108,6 +109,12 @@ class Exporter:
                 logger.debug(value)
                 value = get_exception_class(value)
             labels[labelname] = value
+
+        custom_labels = ast.literal_eval(task.info()['kwargs'])
+
+        for name, value in custom_labels.items():
+            if value.__class__.__name__ is 'str':
+                labels[name] = value
 
         counter.labels(**labels).inc()
         logger.debug("Incremented metric='{}' labels='{}'", counter._name, labels)
