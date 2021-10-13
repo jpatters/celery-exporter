@@ -21,13 +21,14 @@ class Exporter:
                 [
                     "name",
                     "hostname",
+                    "broker",
                 ],
                 registry=self.registry,
             ),
             "task-received": Counter(
                 "celery_task_received",
                 "Sent when the worker receives a task.",
-                ["name", "hostname"],
+                ["name", "hostname", "broker"],
                 registry=self.registry,
             ),
             "task-started": Counter(
@@ -36,38 +37,39 @@ class Exporter:
                 [
                     "name",
                     "hostname",
+                    "broker",
                 ],
                 registry=self.registry,
             ),
             "task-succeeded": Counter(
                 "celery_task_succeeded",
                 "Sent if the task executed successfully.",
-                ["name", "hostname"],
+                ["name", "hostname", "broker"],
                 registry=self.registry,
             ),
             "task-failed": Counter(
                 "celery_task_failed",
                 "Sent if the execution of the task failed.",
-                ["name", "hostname", "exception"],
+                ["name", "hostname", "exception", "broker"],
                 registry=self.registry,
             ),
             "task-rejected": Counter(
                 "celery_task_rejected",
                 # pylint: disable=line-too-long
                 "The task was rejected by the worker, possibly to be re-queued or moved to a dead letter queue.",
-                ["name", "hostname"],
+                ["name", "hostname", "broker"],
                 registry=self.registry,
             ),
             "task-revoked": Counter(
                 "celery_task_revoked",
                 "Sent if the task has been revoked.",
-                ["name", "hostname"],
+                ["name", "hostname", "broker"],
                 registry=self.registry,
             ),
             "task-retried": Counter(
                 "celery_task_retried",
                 "Sent if the task failed, but will be retried in the future.",
-                ["name", "hostname"],
+                ["name", "hostname", "broker"],
                 registry=self.registry,
             ),
         }
@@ -86,7 +88,7 @@ class Exporter:
         self.celery_task_runtime = Histogram(
             "celery_task_runtime",
             "Histogram of task runtime measurements.",
-            ["name", "hostname"],
+            ["name", "hostname", "broker"],
             registry=self.registry,
             buckets=buckets or Histogram.DEFAULT_BUCKETS,
         )
@@ -101,20 +103,25 @@ class Exporter:
             logger.warning("No counter matches task state='{}'", task.state)
             return
 
+        logger.debug(event)
+        logger.debug(task.info())
+
         labels = {}
         # pylint: disable=protected-access
         for labelname in counter._labelnames:
-            value = getattr(task, labelname)
-            if labelname == "exception":
-                logger.debug(value)
-                value = get_exception_class(value)
-            labels[labelname] = value
-
-        custom_labels = ast.literal_eval(task.info()['kwargs'])
-
-        for name, value in custom_labels.items():
-            if isinstance(value, str):
-                labels[name] = value
+            if labelname == "broker":
+                kwargs = getattr(task, 'kwargs')
+                custom_labels = ast.literal_eval(kwargs)
+                if custom_labels.get(labelname):
+                    labels[labelname] = custom_labels[labelname]
+                else:
+                    labels[labelname] = 'None'
+            else:
+                value = getattr(task, labelname)
+                if labelname == "exception":
+                    logger.debug(value)
+                    value = get_exception_class(value)
+                labels[labelname] = value
 
         counter.labels(**labels).inc()
         logger.debug("Incremented metric='{}' labels='{}'", counter._name, labels)
