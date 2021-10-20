@@ -110,8 +110,10 @@ class Exporter:
         # pylint: disable=protected-access
         for labelname in counter._labelnames:
             if labelname == "broker":
+                custom_labels = {}
                 kwargs = getattr(task, 'kwargs')
-                custom_labels = ast.literal_eval(kwargs)
+                if kwargs is not None:
+                    custom_labels = ast.literal_eval(kwargs)
                 if custom_labels.get(labelname):
                     labels[labelname] = custom_labels[labelname]
                 else:
