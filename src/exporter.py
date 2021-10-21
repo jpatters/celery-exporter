@@ -161,6 +161,8 @@ class Exporter:
 
     def run(self, click_params):
         self.app = Celery(broker=click_params["broker_url"])
+        if click_params.get("master_name"):
+            self.app.conf.broker_transport_options = {"master_name": click_params.get("master_name")}
         self.state = self.app.events.State()
 
         handlers = {

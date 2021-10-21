@@ -28,7 +28,12 @@ default_buckets_str = ",".join(map(str, Histogram.DEFAULT_BUCKETS))
     show_default=True,
     help="Buckets for runtime histogram",
 )
-def cli(broker_url, port, buckets):  # pylint: disable=unused-argument
+@click.option(
+    "--master-name",
+    type=str,
+    help="Redis master name for use with redis sentinel"
+)
+def cli(broker_url, port, buckets, master_name):  # pylint: disable=unused-argument
     formatted_buckets = list(map(float, buckets.split(",")))
     ctx = click.get_current_context()
     Exporter(formatted_buckets).run(ctx.params)
